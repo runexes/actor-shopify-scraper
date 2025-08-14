@@ -1,0 +1,27 @@
+{
+    "name": "actor-shopify-scraper",
+    "version": "0.1.0",
+    "type": "module",
+    "description": "Shopify product scraper using sitemaps and Storefront GraphQL with batching and incremental processing.",
+    "dependencies": {
+        "apify": "^3.4.4",
+        "cheerio": "^1.1.2",
+        "crawlee": "^3.14.1",
+        "got-scraping": "^4.1.2",
+        "string-strip-html": "^13.4.13"
+    },
+    "devDependencies": {
+        "eslint": "^9.19.0"
+    },
+    "scripts": {
+        "start": "CRAWLEE_STORAGE_DIR=apify_storage node main.js",
+        "dev": "CRAWLEE_STORAGE_DIR=apify_storage node --watch main.js",
+        "lint": "eslint ./src --ext .js,.jsx",
+        "lint:fix": "eslint ./src --ext .js,.jsx --fix"
+    },
+    "author": {
+        "name": "Aleksandr Sliusarev",
+        "url": "https://github.com/runexes"
+    },
+    "license": "Apache-2.0"
+}

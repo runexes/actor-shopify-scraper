@@ -1,0 +1,13 @@
+This project is based on work from the GitHub repository "pocesar/actor-shopify-scraper" by Paulo Cesar.
+
+Original repository: https://github.com/pocesar/actor-shopify-scraper
+Original author: Paulo Cesar
+
+Modifications include:
+- Migration to Storefront GraphQL with per-host batching
+- Sitemap lastmod filtering and incremental processing
+- Buffered dataset writes and performance improvements
+- Code refactoring, naming, and structure changes
+
+Licensed under the Apache License, Version 2.0.
+

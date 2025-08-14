@@ -1,0 +1,24 @@
+{
+  "startUrls": [
+    { "url": "https://www.decathlon.com/sitemap.xml" }
+  ],
+  "maxRequestsPerCrawl": 10,
+  "proxyConfig": { "useApifyProxy": true },
+  "extendOutputFunction": "async ({ item }) => { return item; }",
+  "extendScraperFunction": "async () => { }",
+  "customData": {},
+  "maxConcurrency": 5,
+  "maxRequestRetries": 3,
+  "updatedSince": "",
+  "batchSize": 10,
+  "flushIntervalMs": 300,
+  "perHostConcurrency": 2,
+  "bufferWrites": true,
+  "bufferSize": 100,
+  "storefrontApiVersion": "2024-07",
+  "storefrontShopDomain": "",
+  "storefrontAccessToken": "PUT_YOUR_SHOPIFY_STOREFRONT_TOKEN_HERE",
+  "debugLog": false
+}
+
+

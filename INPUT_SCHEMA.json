@@ -1,0 +1,159 @@
+{
+    "title": "Shopify scraper",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "startUrls": {
+            "title": "Start URLs",
+            "type": "array",
+            "description": "Provide sitemap.xml URLs as the starting point",
+            "default": [],
+            "prefill": [
+                { "url": "https://www.decathlon.com/sitemap.xml" }
+            ],
+            "editor": "requestListSources"
+        },
+        "maxRequestsPerCrawl": {
+            "title": "Max items",
+            "description": "Maximum number of items to scrape. Set it to 0 to scrape everything.",
+            "default": 10,
+            "prefill": 10,
+            "type": "integer",
+            "editor": "number"
+        },
+        "proxyConfig": {
+            "title": "Proxy Configuration",
+            "type": "object",
+            "description": "Use either automatic Apify proxies, Residentials or your own.",
+            "prefill": { "useApifyProxy": true },
+            "default": { "useApifyProxy": true },
+            "editor": "proxy",
+            "sectionCaption": "Advanced options (proxy configuration, extend output, debug mode)"
+        },
+        "extendOutputFunction": {
+            "title": "Extend Output Function",
+            "description": "Add or remove properties on the output object or omit the output returning null",
+            "type": "string",
+            "default": "async ({ data, item, product, images, fns, name, request, variants, context, customData, input, Apify }) => {\n  return item;\n}",
+            "prefill": "async ({ data, item, product, images, fns, name, request, variants, context, customData, input, Apify }) => {\n  return item;\n}",
+            "editor": "javascript",
+            "sectionCaption": "Extend scraper functionality",
+            "sectionDescription": "You can change the output of the items for your dataset here, or add additional behavior on the scraper."
+        },
+        "extendScraperFunction": {
+            "title": "Extend Scraper Function",
+            "description": "Advanced function that allows you to extend the default scraper functionality, allowing you to manually perform actions on the page",
+            "type": "string",
+            "default": "async ({ fns, customData, Apify, label }) => {\n \n}",
+            "prefill": "async ({ fns, customData, Apify, label }) => {\n \n}",
+            "editor": "javascript"
+        },
+        "customData": {
+            "title": "Custom data",
+            "description": "Any data that you want to have available inside the Extend Output/Scraper Function",
+            "default": {},
+            "prefill": {},
+            "type": "object",
+            "editor": "json"
+        },
+        "maxConcurrency": {
+            "title": "Max concurrency",
+            "description": "Max concurrency to use",
+            "default": 10,
+            "prefill": 10,
+            "type": "integer",
+            "editor": "number"
+        },
+        "maxRequestRetries": {
+            "title": "Max request retries",
+            "description": "Set the max request retries",
+            "default": 3,
+            "prefill": 3,
+            "type": "integer",
+            "editor": "number"
+        },
+        "updatedSince": {
+            "title": "Updated since (ISO date)",
+            "description": "Skip products older than this date based on sitemap <lastmod>.",
+            "type": "string",
+            "default": "",
+            "prefill": "",
+            "editor": "textfield"
+        },
+        "batchSize": {
+            "title": "GraphQL batch size",
+            "description": "Number of product handles to fetch per GraphQL request (per store)",
+            "type": "integer",
+            "default": 10,
+            "prefill": 10,
+            "editor": "number"
+        },
+        "flushIntervalMs": {
+            "title": "Batch flush interval (ms)",
+            "description": "Maximum time to wait before sending a partial batch",
+            "type": "integer",
+            "default": 300,
+            "prefill": 300,
+            "editor": "number"
+        },
+        "perHostConcurrency": {
+            "title": "Per-host concurrency",
+            "description": "Parallel GraphQL requests per store",
+            "type": "integer",
+            "default": 2,
+            "prefill": 2,
+            "editor": "number"
+        },
+        "bufferWrites": {
+            "title": "Buffer dataset writes",
+            "description": "Accumulate items in memory and push in batches",
+            "type": "boolean",
+            "default": true,
+            "editor": "checkbox"
+        },
+        "bufferSize": {
+            "title": "Dataset buffer size",
+            "description": "Number of items to accumulate before pushing",
+            "type": "integer",
+            "default": 100,
+            "prefill": 100,
+            "editor": "number"
+        },
+        "storefrontApiVersion": {
+            "title": "Storefront API version",
+            "description": "Version of Shopify Storefront API (e.g. 2024-07)",
+            "type": "string",
+            "default": "2024-07",
+            "prefill": "2024-07",
+            "editor": "textfield"
+        },
+        "storefrontShopDomain": {
+            "title": "Shopify shop domain for Storefront API",
+            "description": "Full origin for Storefront API calls, e.g. https://your-shop.myshopify.com. If empty, the scraper will use the product site origin.",
+            "type": "string",
+            "default": "",
+            "prefill": "",
+            "editor": "textfield",
+            "sectionCaption": "Shopify Storefront API"
+        },
+        "storefrontAccessToken": {
+            "title": "Storefront access token",
+            "description": "Shopify Storefront API access token",
+            "type": "string",
+            "default": "",
+            "prefill": "",
+            "editor": "textfield",
+            "sectionCaption": "Shopify Storefront API"
+        },
+        "debugLog": {
+            "title": "Debug Log",
+            "description": "Enable a more verbose logging to be able to understand what's happening during the scraping",
+            "type": "boolean",
+            "default": false,
+            "editor": "checkbox"
+        }
+    },
+    "required": [
+        "storefrontAccessToken"
+    ]
+}

@@ -1,0 +1,14 @@
+name: actor-shopify-scraper
+services:
+  actor:
+    build:
+      context: .
+    image: ${IMAGE_NAME:-actor-shopify-scraper}
+    env_file:
+      - .env
+    environment:
+      - APIFY_DISABLE_OUTDATED_WARNING=1
+      - CRAWLEE_STORAGE_DIR=/usr/src/app/apify_storage
+    volumes:
+      - ./apify_storage:/usr/src/app/apify_storage
+    restart: "no"

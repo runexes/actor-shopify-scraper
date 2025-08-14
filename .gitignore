@@ -1,0 +1,7 @@
+.idea
+node_modules
+apify_storage
+/.env
+/apify_storage/key_value_stores/default/INPUT.json
+/apify_storage/datasets/
+/apify_storage/request_queues/
