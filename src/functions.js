@@ -1,20 +1,30 @@
 // @ts-nocheck
-import { Actor, log } from 'apify';
-import { BasicCrawler, RequestList } from 'crawlee';
-import { gotScraping } from 'got-scraping';
-import { load } from 'cheerio';
-import * as vm from 'vm';
+import { Actor, log } from "apify";
+import { BasicCrawler, RequestList } from "crawlee";
+import { gotScraping } from "got-scraping";
+import { load } from "cheerio";
+import * as vm from "vm";
 
-export { stripHtml } from 'string-strip-html';
-
+export { stripHtml } from "string-strip-html";
 
 /**
  * Remove Shopify GID prefix from the string if present
  *
  * @param {string} str
  */
+/**
+ * Normalize a URL/domain to a stable Shopify cache key.
+ * @param {string} value
+ */
+export const normalizeShopDomain = (value) => {
+    const hostname = new URL(
+        value.includes("://") ? value : `https://${value}`,
+    ).hostname.toLowerCase();
+    return hostname.replace(/^www\./, "");
+};
+
 export const stripShopifyGid = (str) => {
-	return +`${str}`.replace(/^gid:\/\/shopify\/[^/]+\//, '');
+    return `${str}`.replace(/^gid:\/\/shopify\/[^/]+\//, "");
 };
 
 /**
@@ -24,13 +34,13 @@ export const stripShopifyGid = (str) => {
  * @param {string[]} props
  */
 export const pickFirstAvailable = (bases, props) => {
-	for (const prop of props) {
-		for (const base of bases) {
-			if (prop in base) {
-				return base[prop];
-			}
-		}
-	}
+    for (const prop of props) {
+        for (const base of bases) {
+            if (prop in base) {
+                return base[prop];
+            }
+        }
+    }
 };
 
 /**
@@ -39,25 +49,22 @@ export const pickFirstAvailable = (bases, props) => {
  * @param {string} str
  */
 export const toSnakeCase = (str) => {
-	return str.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+    return str
+        .replace(/([A-Z])/g, "_$1")
+        .toLowerCase()
+        .replace(/^_/, "");
 };
 
 /**
  * @param {string} date
  */
 export const parseIsoDateSafe = (date) => {
-	try {
-		return new Date(date).toISOString();
-	} catch {
-		return null;
-	}
+    try {
+        return new Date(date).toISOString();
+    } catch {
+        return null;
+    }
 };
-
-/**
- *
- * @param {*} url
- */
-// categorizeUrl removed (unused)
 
 /**
  * Monkey-patch the handleRequestFunction failed... error
@@ -65,12 +72,12 @@ export const parseIsoDateSafe = (date) => {
  * @param {Apify.BasicCrawler} crawler
  */
 export const patchCrawlerLog = (crawler) => {
-	const originalException = crawler.log.exception.bind(crawler.log);
-	crawler.log.exception = (...args) => {
-		if (!args?.[1]?.includes('handleRequestFunction')) {
-			originalException(...args);
-		}
-	};
+    const originalException = crawler.log.exception.bind(crawler.log);
+    crawler.log.exception = (...args) => {
+        if (!args?.[1]?.includes("handleRequestFunction")) {
+            originalException(...args);
+        }
+    };
 };
 
 /**
@@ -85,16 +92,18 @@ export const patchCrawlerLog = (crawler) => {
  * @param {any[]} startUrls
  * @param {string} [name]
  */
-export const iterateStartUrls = async function* (startUrls, name = 'INPUTURLS') {
-	const rl = await RequestList.open(name, startUrls);
+export const iterateStartUrls = async function* (
+    startUrls,
+    name = "INPUTURLS",
+) {
+    const rl = await RequestList.open(name, startUrls);
 
-	/** @type {Apify.Request | null} */
-	let rq;
+    /** @type {Apify.Request | null} */
+    let rq;
 
-	// eslint-disable-next-line no-cond-assign
-	while (rq = await rl.fetchNextRequest()) {
-		yield rq;
-	}
+    while ((rq = await rl.fetchNextRequest())) {
+        yield rq;
+    }
 };
 
 /**
@@ -121,112 +130,122 @@ export const iterateStartUrls = async function* (startUrls, name = 'INPUTURLS') 
  * }} params
  */
 export const buildRequestListFromSitemaps = async ({
-	proxyConfiguration,
-	filter,
-	map,
-	limit = 0,
-	requestQueue,
-	timeout = 300,
-	sitemapUrls,
-	maxConcurrency = 1,
+    proxyConfiguration,
+    filter,
+    map,
+    limit = 0,
+    requestQueue,
+    timeout = 300,
+    sitemapUrls,
+    maxConcurrency = 1,
 }) => {
-	const urls = new Set();
+    const urls = new Map();
 
-	/** @param {string} url */
-	const cleanup = (url) => `${url}`.replace(/[\n\r]/g, '').trim();
+    /** @param {string} url */
+    const cleanup = (url) => `${url}`.replace(/[\n\r]/g, "").trim();
 
-	let count = 1;
+    let count = 1;
 
-	const sitemapCrawler = new BasicCrawler({
-		requestList: await RequestList.open('SITEMAPS', sitemapUrls.map((u) => ({ url: u }))),
-		requestQueue,
-		useSessionPool: true,
-		maxConcurrency,
-		requestHandlerTimeoutSecs: timeout,
-		sessionPoolOptions: {
-			persistStateKey: 'SITEMAPS_SESSION_POOL',
-			sessionOptions: {
-				maxErrorScore: 0.5,
-			},
-		},
-		maxRequestRetries: 5,
-		requestHandler: async ({ request, session }) => {
-			const response = await gotScraping({
-				url: request.url,
-				proxyUrl: proxyConfiguration ? await proxyConfiguration.newUrl(session?.id) : undefined,
-				timeout: {
-					response: 10000,
-					request: 5000,
-				},
-				retry: { limit: 0 },
-			});
+    const sitemapCrawler = new BasicCrawler({
+        requestList: await RequestList.open(
+            "SITEMAPS",
+            sitemapUrls.map((u) => ({ url: u })),
+        ),
+        requestQueue,
+        useSessionPool: true,
+        maxConcurrency,
+        requestHandlerTimeoutSecs: timeout,
+        sessionPoolOptions: {
+            persistStateKey: "SITEMAPS_SESSION_POOL",
+            sessionOptions: {
+                maxErrorScore: 0.5,
+            },
+        },
+        maxRequestRetries: 5,
+        requestHandler: async ({ request, session }) => {
+            const response = await gotScraping({
+                url: request.url,
+                proxyUrl: proxyConfiguration
+                    ? await proxyConfiguration.newUrl(session?.id)
+                    : undefined,
+                timeout: {
+                    response: 10000,
+                    request: 5000,
+                },
+                retry: { limit: 0 },
+            });
 
-			if (![200, 301, 302].includes(response.statusCode)) {
-				throw new Error(`Status code ${response.statusCode}`);
-			}
+            if (![200, 301, 302].includes(response.statusCode)) {
+                throw new Error(`Status code ${response.statusCode}`);
+            }
 
-			log.debug(`Parsing sitemap ${request.url}`);
+            log.debug(`Parsing sitemap ${request.url}`);
 
-			const $ = load(response.body, { decodeEntities: true });
+            const $ = load(response.body, { decodeEntities: true });
 
-			const $locations = $('url loc');
+            const $locations = $("url loc");
 
-			for (const el of $locations) {
-				const url = cleanup($(el).text());
-				const lastmod = cleanup($(el).parent().find('lastmod').text());
+            for (const el of $locations) {
+                const url = cleanup($(el).text());
+                const lastmod = cleanup($(el).parent().find("lastmod").text());
 
-				if (await filter(url, lastmod, false)) {
-					const limited = limit > 0
-						? urls.size >= limit
-						: false;
+                if (await filter(url, lastmod, false)) {
+                    const limited = limit > 0 ? urls.size >= limit : false;
 
-					if (!limited) {
-						log.debug(`Adding product url`, { url });
-						urls.add(map(url));
-					} else {
-						break;
-					}
-				}
-			}
+                    if (!limited) {
+                        log.debug(`Adding product url`, { url });
+                        const mapped = map(url);
+                        urls.set(mapped.url || url, mapped);
+                    } else {
+                        break;
+                    }
+                }
+            }
 
-			// recursive sitemap
-			for (const el of $('sitemap loc')) {
-				const url = cleanup($(el).text());
-				const lastmod = cleanup($(el).parent().find('lastmod').text());
+            // recursive sitemap
+            for (const el of $("sitemap loc")) {
+                const url = cleanup($(el).text());
+                const lastmod = cleanup($(el).parent().find("lastmod").text());
 
-				if (await filter(url, lastmod, true)) {
-					log.debug(`Found subsitemap url`, { url });
+                if (await filter(url, lastmod, true)) {
+                    log.debug(`Found subsitemap url`, { url });
 
-					await requestQueue.addRequest({
-						url,
-					});
-					count++;
-				}
-			}
-		},
-	});
+                    await requestQueue.addRequest({
+                        url,
+                    });
+                    count++;
+                }
+            }
+        },
+    });
 
-	await sitemapCrawler.run();
+    await sitemapCrawler.run();
 
-	log.info(`Found ${urls.size} URLs from ${count} sitemap URLs`);
+    log.info(`Found ${urls.size} URLs from ${count} sitemap URLs`);
 
-	return RequestList.open('STARTURLS', [...urls.values()]);
+    return RequestList.open("STARTURLS", [...urls.values()]);
 };
 
 /**
  * @param {Record<string, any>[]} arr
  */
-export const mapEntitiesById = (arr) => new Map([...arr].filter((s) => s).map((item) => ([stripShopifyGid(item.id), item])));
+export const mapEntitiesById = (arr) =>
+    new Map(
+        [...arr]
+            .filter((s) => s)
+            .map((item) => [stripShopifyGid(item.id), item]),
+    );
 
 /**
  * @param {any[]} arr
  */
-export const uniqueDefinedArray = (arr) => [...new Set([...arr])].filter((s) => s);
+export const uniqueDefinedArray = (arr) =>
+    [...new Set([...arr])].filter((s) => s);
 
 /**
  * @param {string} url
  */
-export const stripUrlQuery = (url) => `${url}`.split('?', 2)[0];
+export const stripUrlQuery = (url) => `${url}`.split("?", 2)[0];
 
 /**
  *
@@ -235,24 +254,24 @@ export const stripUrlQuery = (url) => `${url}`.split('?', 2)[0];
  * @returns {{ name: string, props: Record<string, any> }}
  */
 export const deriveVariantAttributes = (variant, product) => {
-	const { options } = product;
+    const { options } = product;
 
-	if (/(Default|title)/i.test(`${options?.[0]?.name}`)) {
-		return { name: 'Default', props: {} };
-	}
+    if (/(Default|title)/i.test(`${options?.[0]?.name}`)) {
+        return { name: "Default", props: {} };
+    }
 
-	const name = [];
-	const props = {};
+    const name = [];
+    const props = {};
 
-	for (let i = 0; i < options.length; i++) {
-		const prop = `option${i + 1}`;
-		if (prop in variant) {
-			props[toSnakeCase(options[i].name)] = variant[prop];
-			name.push(`${options[i].name}: ${variant[prop]}`);
-		}
-	}
+    for (let i = 0; i < options.length; i++) {
+        const prop = `option${i + 1}`;
+        if (prop in variant) {
+            props[toSnakeCase(options[i].name)] = variant[prop];
+            name.push(`${options[i].name}: ${variant[prop]}`);
+        }
+    }
 
-	return { name: name.join(' / '), props };
+    return { name: name.join(" / "), props };
 };
 
 /**
@@ -292,37 +311,58 @@ export const deriveVariantAttributes = (variant, product) => {
  * @returns {Promise<Apify.ProxyConfiguration | undefined>}
  */
 export const createProxyConfigurationChecked = async ({
-	proxyConfig,
-	required = true,
-	force = Actor.isAtHome(),
-	blacklist = ['GOOGLESERP'],
-	hint = [],
+    proxyConfig,
+    required = true,
+    force = Actor.isAtHome(),
+    blacklist = ["GOOGLESERP"],
+    hint = [],
 }) => {
-	const configuration = await Actor.createProxyConfiguration(proxyConfig);
+    const configuration = await Actor.createProxyConfiguration(proxyConfig);
 
-	// this works for custom proxyUrls
-	if (Actor.isAtHome() && required) {
-		if (!configuration || (!configuration.usesApifyProxy && (!configuration.proxyUrls || !configuration.proxyUrls.length)) || !configuration.newUrl()) {
-			throw new Error('\n=======\nYou must use Apify proxy or custom proxy URLs\n\n=======');
-		}
-	}
+    // this works for custom proxyUrls
+    if (Actor.isAtHome() && required) {
+        if (
+            !configuration ||
+            (!configuration.usesApifyProxy &&
+                (!configuration.proxyUrls ||
+                    !configuration.proxyUrls.length)) ||
+            !configuration.newUrl()
+        ) {
+            throw new Error(
+                "\n=======\nYou must use Apify proxy or custom proxy URLs\n\n=======",
+            );
+        }
+    }
 
-	// check when running on the platform by default
-	if (force) {
-		// only when actually using Apify proxy it needs to be checked for the groups
-		if (configuration && configuration.usesApifyProxy) {
-			if (blacklist.some((blacklisted) => (configuration.groups || []).includes(blacklisted))) {
-				throw new Error(`\n=======\nThese proxy groups cannot be used in this actor. Choose other group or contact support@apify.com to give you proxy trial:\n\n*  ${blacklist.join('\n*  ')}\n\n=======`);
-			}
+    // check when running on the platform by default
+    if (force) {
+        // only when actually using Apify proxy it needs to be checked for the groups
+        if (configuration && configuration.usesApifyProxy) {
+            if (
+                blacklist.some((blacklisted) =>
+                    (configuration.groups || []).includes(blacklisted),
+                )
+            ) {
+                throw new Error(
+                    `\n=======\nThese proxy groups cannot be used in this actor. Choose other group or contact support@apify.com to give you proxy trial:\n\n*  ${blacklist.join("\n*  ")}\n\n=======`,
+                );
+            }
 
-			// specific non-automatic proxy groups like RESIDENTIAL, not an error, just a hint
-			if (hint.length && !hint.some((group) => (configuration.groups || []).includes(group))) {
-				log.info(`\n=======\nYou can pick specific proxy groups for better experience:\n\n*  ${hint.join('\n*  ')}\n\n=======`);
-			}
-		}
-	}
+            // specific non-automatic proxy groups like RESIDENTIAL, not an error, just a hint
+            if (
+                hint.length &&
+                !hint.some((group) =>
+                    (configuration.groups || []).includes(group),
+                )
+            ) {
+                log.info(
+                    `\n=======\nYou can pick specific proxy groups for better experience:\n\n*  ${hint.join("\n*  ")}\n\n=======`,
+                );
+            }
+        }
+    }
 
-	return configuration;
+    return configuration;
 };
 
 /**
@@ -357,76 +397,76 @@ export const createProxyConfigurationChecked = async ({
  * @return {Promise<(data: RAW, args?: Record<string, any>) => Promise<void>>}
  */
 export const compileExtendFunction = async ({
-	key,
-	output,
-	filter,
-	map,
-	input,
-	helpers,
+    key,
+    output,
+    filter,
+    map,
+    input,
+    helpers,
 }) => {
-	/**
-	 * @type {PARAMS<HELPERS>}
-	 */
-	const base = {
-		...helpers,
-		Actor,
-		customData: input.customData || {},
-	};
+    /**
+     * @type {PARAMS<HELPERS>}
+     */
+    const base = {
+        ...helpers,
+        Actor,
+        customData: input.customData || {},
+    };
 
-	const evaledFn = (() => {
-		// need to keep the same signature for no-op
-		if (typeof input[key] !== 'string' || input[key].trim() === '') {
-			return new vm.Script('({ item }) => item');
-		}
+    const evaledFn = (() => {
+        // need to keep the same signature for no-op
+        if (typeof input[key] !== "string" || input[key].trim() === "") {
+            return new vm.Script("({ item }) => item");
+        }
 
-		try {
-			return new vm.Script(input[key], {
-				lineOffset: 0,
-				produceCachedData: false,
-				displayErrors: true,
-				filename: `${key}.js`,
-			});
-		} catch {
-			throw new Error(`"${key}" parameter must be a function`);
-		}
-	})();
+        try {
+            return new vm.Script(input[key], {
+                lineOffset: 0,
+                produceCachedData: false,
+                displayErrors: true,
+                filename: `${key}.js`,
+            });
+        } catch {
+            throw new Error(`"${key}" parameter must be a function`);
+        }
+    })();
 
-	/**
-	 * Returning arrays from wrapper function split them accordingly.
-	 * Normalize to an array output, even for 1 item.
-	 *
-	 * @param {any} value
-	 * @param {any} [args]
-	 */
-	const splitMap = async (value, args) => {
-		const mapped = map ? await map(value, args) : value;
+    /**
+     * Returning arrays from wrapper function split them accordingly.
+     * Normalize to an array output, even for 1 item.
+     *
+     * @param {any} value
+     * @param {any} [args]
+     */
+    const splitMap = async (value, args) => {
+        const mapped = map ? await map(value, args) : value;
 
-		if (!Array.isArray(mapped)) {
-			return [mapped];
-		}
+        if (!Array.isArray(mapped)) {
+            return [mapped];
+        }
 
-		return mapped;
-	};
+        return mapped;
+    };
 
-	return async (data, args) => {
-		const merged = { ...base, ...args };
+    return async (data, args) => {
+        const merged = { ...base, ...args };
 
-		for (const item of await splitMap(data, merged)) {
-			if (filter && !(await filter({ data, item }, merged))) {
-				continue;
-			}
+        for (const item of await splitMap(data, merged)) {
+            if (filter && !(await filter({ data, item }, merged))) {
+                continue;
+            }
 
-			const result = await (evaledFn.runInThisContext()({
-				...merged,
-				data,
-				item,
-			}));
+            const result = await evaledFn.runInThisContext()({
+                ...merged,
+                data,
+                item,
+            });
 
-			for (const out of (Array.isArray(result) ? result : [result])) {
-				if (output && out !== null) {
-					await output(out, { ...merged, data, item });
-				}
-			}
-		}
-	};
+            for (const out of Array.isArray(result) ? result : [result]) {
+                if (output && out !== null) {
+                    await output(out, { ...merged, data, item });
+                }
+            }
+        }
+    };
 };

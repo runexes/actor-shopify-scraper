@@ -1,69 +1,166 @@
-## Shopify Scraper (GraphQL)
+# Shopify Scraper (Storefront GraphQL)
 
-An Apify actor that crawls Shopify stores via `sitemap.xml` and fetches product data using the Storefront GraphQL API. Optimized for speed and cost with per-host batching, incremental processing, and buffered dataset writes.
+An Apify Actor that discovers Shopify product URLs from `sitemap.xml` and fetches product data through Shopify's Storefront GraphQL API.
 
-### Features
-- Reads `sitemap.xml`, filters product URLs (`/products/<handle>`)
-- Batches GraphQL requests per store using aliases (fewer round-trips)
-- Optional incremental runs (skips already processed product IDs)
-- Optional lastmod cutoff to skip old products
-- Outputs a single record per product; all variants are available under `additional.variants`
-- Extensible via `extendScraperFunction` and `extendOutputFunction`
+The Actor is designed around **batched GraphQL requests**, not HTML product-page scraping. It can use a supplied public Storefront token, tokenless Storefront access where supported, or automatically discover a public Storefront token from the storefront's client-side HTML/JavaScript.
 
-### Input parameters (core)
-- `startUrls`: array of `sitemap.xml` URLs
-- `storefrontApiVersion`: Storefront API version (e.g., `2024-07`)
-- `storefrontAccessToken`: your Storefront access token
-- `maxRequestsPerCrawl`, `maxConcurrency`, `maxRequestRetries`, `proxyConfig`, `debugLog`
-  
-### Performance inputs
-- `updatedSince`: ISO date; skips products with `<lastmod>` older than this
-- `batchSize`: product handles per GraphQL request (default 10)
-- `flushIntervalMs`: max delay before sending a partial batch (default 300)
-- `perHostConcurrency`: parallel GraphQL requests per store (default 2)
-- `bufferWrites`: buffer dataset writes (default true)
-- `bufferSize`: items per dataset push (default 100)
+## Features
 
-### Run locally
-1) Install dependencies:
+- Reads `sitemap.xml` and filters Shopify product URLs.
+- Uses Storefront GraphQL as the primary product data source.
+- Batches product handles into GraphQL requests using aliases.
+- Supports tokenless Storefront product access where available.
+- Automatically discovers and validates a public Storefront API token when tokenless access is unavailable.
+- Caches discovered public tokens in Apify Key-Value Store per shop.
+- Invalidates and rediscoveres a cached token after authentication failures.
+- Handles partial GraphQL errors without discarding successful products.
+- Retries failed products and transient batches with bounded retries.
+- Uses the currency returned by Shopify for each variant.
+- Supports incremental processing and last-modified filtering.
+- Buffers Dataset writes for better throughput.
+- Preserves `extendScraperFunction` and `extendOutputFunction`.
+
+## Basic input
+
+For the normal case, only a sitemap is needed:
+
+```json
+{
+    "startUrls": [{ "url": "https://example.com/sitemap.xml" }]
+}
+```
+
+The Actor derives the storefront origin from the sitemap/product URLs.
+
+Authentication is resolved in this order:
+
+1. `storefrontAccessToken`, when explicitly supplied.
+2. A previously discovered public token cached in Apify Key-Value Store.
+3. Tokenless Storefront GraphQL access.
+4. Public token discovery from the storefront homepage and a limited number of same-origin JavaScript assets.
+5. Validation of every candidate with a real Storefront GraphQL `products` query.
+
+If no valid authentication path is available, the Actor reports that a public Storefront token could not be discovered and suggests supplying one manually.
+
+## Shopify Storefront API
+
+The default Storefront API version is `2026-07`.
+
+Advanced inputs:
+
+- `storefrontApiVersion` — override the API version if required.
+- `storefrontShopDomain` — override the GraphQL API origin.
+- `storefrontAccessToken` — optional public Storefront API token. It is not required for the normal automatic-discovery flow.
+
+Discovered tokens are stored as operational state in the Apify Key-Value Store. They are **never written to the output Dataset**.
+
+## Performance inputs
+
+- `maxRequestsPerCrawl` — maximum number of product URLs; `0` means unlimited.
+- `maxConcurrency` — sitemap/product discovery concurrency.
+- `maxRequestRetries` — Crawlee retries.
+- `updatedSince` — skip products whose sitemap `<lastmod>` is older than this date.
+- `batchSize` — product handles per GraphQL request.
+- `flushIntervalMs` — maximum wait before sending a partial batch.
+- `perHostConcurrency` — parallel GraphQL requests per store.
+- `bufferWrites` — buffer Dataset writes.
+- `bufferSize` — number of items to buffer before pushing.
+
+## Token discovery
+
+Discovery intentionally searches only for **public Storefront credentials exposed to storefront clients**.
+
+The flow is:
+
+```text
+sitemap
+  ↓
+store origin
+  ↓
+cached token?
+  ↓ no
+tokenless GraphQL?
+  ↓ no
+homepage HTML
+  ↓
+same-origin JS assets
+  ↓
+candidate tokens
+  ↓
+GraphQL validation
+  ↓
+cache valid public token
+```
+
+The Actor does not attempt to obtain private Shopify credentials.
+
+## Local development
+
+1. Install dependencies:
+
 ```bash
 npm install
 ```
-2) Create local input at `apify_storage/key_value_stores/default/INPUT.json`, for example:
+
+2. Create local storage:
+
+```bash
+make init
+```
+
+3. Edit:
+
+```text
+apify_storage/key_value_stores/default/INPUT.json
+```
+
+A token is optional:
+
 ```json
 {
-  "startUrls": [{ "url": "https://example.com/sitemap.xml" }],
-  "storefrontApiVersion": "2024-07",
-  "storefrontAccessToken": "<YOUR_STOREFRONT_TOKEN>",
-  "maxRequestsPerCrawl": 50,
-  "maxConcurrency": 10,
-  "debugLog": true
+    "startUrls": [{ "url": "https://example.com/sitemap.xml" }],
+    "maxRequestsPerCrawl": 50,
+    "debugLog": true
 }
 ```
-3) Start the actor:
+
+4. Run:
+
 ```bash
 npm start
 ```
-Or development mode with auto-restart:
+
+Development mode:
+
 ```bash
 npm run dev
 ```
 
-### GitHub integration
-Workflows in `.github/workflows/`:
-- `ci.yml`: install, lint, and syntax check on push/PR to `main`.
-- `codeql.yml`: CodeQL security analysis on push/PR and weekly.
+Tests:
 
-### Docker quick start
 ```bash
-make init   # creates .env and INPUT.json from templates
-make run    # docker compose up --build actor
+npm test
 ```
-Outputs will be in `apify_storage/datasets/default`.
 
-### Extensibility
-- `extendScraperFunction`: lifecycle hooks (`SETUP`, `FILTER_SITEMAP_URL`, `PRENAVIGATION`, `POSTNAVIGATION`, `RUN`, `FINISHED`)
-- `extendOutputFunction`: transform/filter final records before they are saved to the Dataset
+Lint:
 
-### License
-This project is licensed under the Apache License 2.0. See `LICENSE` and `NOTICE`.
+```bash
+npm run lint
+```
+
+## Docker
+
+```bash
+make build
+make run
+```
+
+The Actor uses Apify's Node.js 24 slim base image and installs its runtime dependencies from `package-lock.json`.
+
+## Output
+
+One Dataset item is produced per product. The output includes the product URL, title, SKU, price, currency, availability, images, brand and variant information.
+
+## License
+
+Apache-2.0

@@ -22,7 +22,7 @@ build:
 	docker build --platform=linux/amd64 -t $(IMAGE_NAME) .
 
 run:
-	docker-compose up -d
+	docker-compose up -d --build
 
 clean:
 	@rm -rf apify_storage/datasets/default

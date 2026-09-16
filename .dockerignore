@@ -1,0 +1,11 @@
+.git
+.github
+apify_storage
+node_modules
+templates
+tests
+coverage
+*.log
+.DS_Store
+README*
+docs

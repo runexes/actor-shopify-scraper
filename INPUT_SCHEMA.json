@@ -9,7 +9,9 @@
             "description": "Provide sitemap.xml URLs as the starting point",
             "default": [],
             "prefill": [
-                { "url": "https://www.decathlon.com/sitemap.xml" }
+                {
+                    "url": "https://www.decathlon.com/sitemap.xml"
+                }
             ],
             "editor": "requestListSources"
         },
@@ -25,8 +27,12 @@
             "title": "Proxy Configuration",
             "type": "object",
             "description": "Use either automatic Apify proxies, Residentials or your own.",
-            "prefill": { "useApifyProxy": true },
-            "default": { "useApifyProxy": true },
+            "prefill": {
+                "useApifyProxy": true
+            },
+            "default": {
+                "useApifyProxy": true
+            },
             "editor": "proxy",
             "sectionCaption": "Advanced options (proxy configuration, extend output, debug mode)"
         },
@@ -121,10 +127,10 @@
         },
         "storefrontApiVersion": {
             "title": "Storefront API version",
-            "description": "Version of Shopify Storefront API (e.g. 2024-07)",
+            "description": "Storefront API version. Defaults to the latest stable version supported by this Actor.",
             "type": "string",
-            "default": "2024-07",
-            "prefill": "2024-07",
+            "default": "2026-07",
+            "prefill": "2026-07",
             "editor": "textfield"
         },
         "storefrontShopDomain": {
@@ -134,16 +140,16 @@
             "default": "",
             "prefill": "",
             "editor": "textfield",
-            "sectionCaption": "Shopify Storefront API"
+            "sectionCaption": "Shopify Storefront API (advanced)"
         },
         "storefrontAccessToken": {
             "title": "Storefront access token",
-            "description": "Shopify Storefront API access token",
+            "description": "Optional public Storefront API access token. If omitted, the Actor tries tokenless access, then discovers a public token from the storefront.",
             "type": "string",
             "default": "",
             "prefill": "",
             "editor": "textfield",
-            "sectionCaption": "Shopify Storefront API"
+            "sectionCaption": "Shopify Storefront API (advanced)"
         },
         "debugLog": {
             "title": "Debug Log",
@@ -153,7 +159,5 @@
             "editor": "checkbox"
         }
     },
-    "required": [
-        "storefrontAccessToken"
-    ]
+    "required": ["startUrls"]
 }
